@@ -445,9 +445,16 @@ class ImageCaption {
 
         try {
             // 获取位置设置
-            const locationSetting = app.ui.settings.getSettingValue(
+            let locationSetting = app.ui.settings.getSettingValue(
                 "ImageCaption.Location"
             );
+
+            // 根据不同的渲染模式自动分配互不冲突的最佳位置
+            if (nodeMountService.isVueNodesMode()) {
+                locationSetting = ANCHOR_POSITION.BOTTOM_RIGHT_H; // Vue模式右下角避开ID
+            } else {
+                locationSetting = ANCHOR_POSITION.BOTTOM_LEFT_H; // LiteGraph模式保持左下角
+            }
 
             // Create AssistantContainer instance
             const container = new AssistantContainer({
@@ -1908,11 +1915,11 @@ class ImageCaption {
 
         const { container: nodeContainer } = containerInfo;
 
-        // Vue模式：使用绝对定位，挂载到节点容器内
+        // Vue模式：使用绝对定位，挂载到节点容器内（右侧对齐，无需上移避让由于左侧的ID）
         containerDiv.style.position = 'absolute';
-        containerDiv.style.left = '6px';
+        containerDiv.style.right = '6px';
         containerDiv.style.bottom = '6px';
-        containerDiv.style.right = 'auto';
+        containerDiv.style.left = 'auto';
         containerDiv.style.top = 'auto';
         containerDiv.style.zIndex = '10';
 

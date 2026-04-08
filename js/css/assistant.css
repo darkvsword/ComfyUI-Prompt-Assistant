@@ -618,8 +618,9 @@
 }
 
 [data-node-id] .assistant-container-common.image-assistant-container {
-    left: 6px;
-    bottom: 6px;
+    right: 6px;
+    bottom: 6px; 
+    left: auto;
     z-index: 10;
     transform: none;
     /* Vue模式下不需要画布缩放 */
