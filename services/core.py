@@ -75,19 +75,23 @@ class HTTPClientPool:
             if not client.is_closed:
                 return client
 
+        # 智能判定是否为本地地址
+        is_local = False
+        if base_url:
+            is_local = any(host in str(base_url) for host in ['localhost', '127.0.0.1', '0.0.0.0', '[::1]'])
+            
         # 创建新客户端
         client_kwargs = {
             'timeout': httpx.Timeout(timeout, connect=10.0, read=timeout, write=60.0),
             'verify': verify_ssl,
             'follow_redirects': True,
             'http2': False,
-            # 关键修复：禁用系统环境变量代理配置
-            # 避免 HTTP_PROXY/HTTPS_PROXY 导致 localhost 请求被代理拦截返回 502
-            'trust_env': False,
+            # 关键修复：根据目标地址智能控制系统代理配置
+            # 避免 HTTP_PROXY/HTTPS_PROXY 拦截本地请求，同时允许外部请求（如xflow, openai）使用代理
+            'trust_env': not is_local,
             # 设置连接池保持连接
             'limits': httpx.Limits(max_keepalive_connections=10, max_connections=20, keepalive_expiry=60.0)
-        }
-        
+        }        
         if proxy:
             client_kwargs['proxies'] = proxy
         
