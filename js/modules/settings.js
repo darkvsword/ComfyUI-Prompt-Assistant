@@ -20,7 +20,8 @@ import {
     ensureUiLocaleLoaded,
     tUI,
     patchToastLocalization,
-    syncGlobalUiLocalization
+    syncGlobalUiLocalization,
+    LANGUAGE_OPTIONS
 } from "../utils/uiI18n.js";
 
 import { apiConfigManager } from "./apiConfigManager.js";
@@ -478,10 +479,7 @@ export async function registerSettings() {
                     name: "界面语言",
                     category: ["✨提示词小助手", "系统", "界面语言"],
                     type: "combo",
-                    options: [
-                        { text: "English", value: "en" },
-                        { text: "中文", value: "zh" }
-                    ],
+                    options: LANGUAGE_OPTIONS,
                     defaultValue: "zh",
                     tooltip: "切换插件界面语言，修改后自动刷新页面生效",
                     onChange: (value) => {

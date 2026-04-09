@@ -5,7 +5,22 @@ import { APIService } from "../services/api.js";
 export const UI_LANGUAGE_SETTING_ID = "PromptAssistant.Settings.InterfaceLanguage";
 export const UI_LANGUAGE_STORAGE_KEY = "PromptAssistant.Settings.InterfaceLanguage";
 
-const SUPPORTED_LANGUAGES = new Set(["zh", "en"]);
+const SUPPORTED_LANGUAGES = new Set(["zh", "en", "zh-TW", "ja", "ko", "ar", "es", "fa", "fr", "pt-BR", "ru", "tr"]);
+
+export const LANGUAGE_OPTIONS = [
+    { text: "简体中文", value: "zh" },
+    { text: "English", value: "en" },
+    { text: "繁體中文", value: "zh-TW" },
+    { text: "日本語", value: "ja" },
+    { text: "한국어", value: "ko" },
+    { text: "Русский", value: "ru" },
+    { text: "Türkçe", value: "tr" },
+    { text: "Español", value: "es" },
+    { text: "Français", value: "fr" },
+    { text: "Português", value: "pt-BR" },
+    { text: "العربية", value: "ar" },
+    { text: "فارسی", value: "fa" }
+];
 const LOCALE_CACHE = new Map();
 const DOM_SKIP_SELECTOR = [
     "input",
@@ -41,7 +56,7 @@ export function getStoredUiLanguage() {
 
 export function getCurrentUiLanguage() {
     const settingValue = app?.ui?.settings?.getSettingValue?.(UI_LANGUAGE_SETTING_ID);
-    if (settingValue === "en" || settingValue === "zh") {
+    if (SUPPORTED_LANGUAGES.has(settingValue)) {
         return settingValue;
     }
     return getStoredUiLanguage();
@@ -160,7 +175,8 @@ function translateAttributes(element) {
 }
 
 export function localizeElement(root) {
-    if (!root || getCurrentUiLanguage() !== "en") return;
+    const lang = getCurrentUiLanguage();
+    if (!root || lang === "zh" || !SUPPORTED_LANGUAGES.has(lang)) return;
 
     if (root.nodeType === Node.TEXT_NODE) {
         translateTextNode(root);
@@ -182,7 +198,8 @@ export function localizeElement(root) {
 }
 
 export function observeLocalizedMutations(root) {
-    if (!root || root.nodeType !== Node.ELEMENT_NODE || getCurrentUiLanguage() !== "en") {
+    const lang = getCurrentUiLanguage();
+    if (!root || root.nodeType !== Node.ELEMENT_NODE || lang === "zh" || !SUPPORTED_LANGUAGES.has(lang)) {
         return () => { };
     }
 
@@ -219,7 +236,8 @@ export function syncGlobalUiLocalization() {
         stopGlobalLocalizationObserver = null;
     }
 
-    if (getCurrentUiLanguage() !== "en") return;
+    const lang = getCurrentUiLanguage();
+    if (lang === "zh" || !SUPPORTED_LANGUAGES.has(lang)) return;
 
     localizeElement(document.body);
     stopGlobalLocalizationObserver = observeLocalizedMutations(document.body);
