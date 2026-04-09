@@ -65,17 +65,18 @@ class PromptExpand(LLMNodeBase):
                 # 临时规则开关
                 "custom_rule": ("BOOLEAN", {"default": False, "label_on": "Enable", "label_off": "Disable", "tooltip": "Enable to use custom rule content below instead of preset"}),
                 # 临时规则内容输入框
-                "custom_rule_content": ("STRING", {"multiline": True, "default": "", "placeholder": "在此输入临时规则，仅在启用'临时规则'时生效", "tooltip": "在此输入您的自定义规则内容; 💡输入触发词[R],可以让节点每次都被执行"}),
+                "custom_rule_content": ("STRING", {"multiline": True, "default": "", "placeholder": "在此输入临时规则，仅在启用'临时规则'时生效", "tooltip": "在此输入您的自定义规则内容"}),
                 # 用户提示词
-                "user_prompt": ("STRING", {"multiline": True, "default": "", "placeholder": "填写的要优化的提示词原文，若存在原文端口输入和内容输入，将合并提交", "tooltip": "想要增强的原始提示词; 💡输入触发词[R],可以让节点每次都被执行"}),
+                "user_prompt": ("STRING", {"multiline": True, "default": "", "placeholder": "填写的要优化的提示词原文，若存在原文端口输入和内容输入，将合并提交", "tooltip": "想要增强的原始提示词"}),
                 # 扩写服务
                 "llm_service": (service_options, {"default": default_service, "tooltip": "Select LLM service and model"}),
                 # Ollama自动释放显存
                 "ollama_auto_unload": ("BOOLEAN", {"default": True, "label_on": "Enable", "label_off": "Disable", "tooltip": "Auto unload Ollama model after generation"}),
+                "seed": ("INT", {"default": 0, "min": 0, "max": 0xffffffffffffffff, "control_after_generate": True}),
             },
             "optional": {
                 # 原文输入端口
-                "source_text": ("STRING", {"default": "", "multiline": True, "defaultInput": True, "placeholder": "Input text to enhance...", "tooltip": "可选的输入文本; 💡输入触发词[R],可以让节点每次都被执行"}),
+                "source_text": ("STRING", {"default": "", "multiline": True, "defaultInput": True, "placeholder": "Input text to enhance...", "tooltip": "可选的输入文本"}),
             },
             "hidden": {
                 "unique_id": "UNIQUE_ID",
@@ -89,15 +90,11 @@ class PromptExpand(LLMNodeBase):
     OUTPUT_NODE = False
 
     @classmethod
-    def IS_CHANGED(cls, rule=None, custom_rule=None, custom_rule_content=None, user_prompt=None, llm_service=None, ollama_auto_unload=None, source_text=None, unique_id=None):
+    def IS_CHANGED(cls, rule=None, custom_rule=None, custom_rule_content=None, user_prompt=None, llm_service=None, ollama_auto_unload=None, seed=None, source_text=None, unique_id=None):
         """
         只在输入内容真正变化时才触发重新执行
         使用输入参数的哈希值作为判断依据
         """
-        # 检查是否包含强制刷新符号 [R]
-        if cls._check_is_changed_bypass(rule, custom_rule_content, user_prompt, source_text):
-            return float("nan")
-
         text_hash = hashlib.md5(((source_text or "")).encode('utf-8')).hexdigest()
         temp_rule_hash = hashlib.md5((custom_rule_content or "").encode('utf-8')).hexdigest()
         user_hint_hash = hashlib.md5((user_prompt or "").encode('utf-8')).hexdigest()
@@ -109,11 +106,12 @@ class PromptExpand(LLMNodeBase):
             user_hint_hash,
             llm_service,
             bool(ollama_auto_unload),
+            seed,
             text_hash,
         ))
         return input_hash
 
-    def enhance(self, rule, custom_rule, custom_rule_content, user_prompt, llm_service, ollama_auto_unload, source_text=None, unique_id=None):
+    def enhance(self, rule, custom_rule, custom_rule_content, user_prompt, llm_service, ollama_auto_unload, seed=None, source_text=None, unique_id=None):
         """
         增强/扩写文本函数
         """

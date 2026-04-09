@@ -73,10 +73,11 @@ class KontextPresetNode(VLMNodeBase):
             "required": {
                 "image": ("IMAGE",),
                 "kontext_preset": (prompt_template_options, {"default": prompt_template_options[0] if prompt_template_options else "情境深度融合"}),
-                "user_prompt": ("STRING", {"multiline": True, "default": "", "placeholder": "输入额外的具体要求,将与预设一起发送给模型", "tooltip": "输入额外的具体要求,将与预设一起发送给模型; 💡输入触发词[R],可以让节点每次都被执行"}),
+                "user_prompt": ("STRING", {"multiline": True, "default": "", "placeholder": "输入额外的具体要求,将与预设一起发送给模型", "tooltip": "输入额外的具体要求,将与预设一起发送给模型"}),
                 "vlm_service": (service_options, {"default": default_service, "tooltip": "Select VLM service and model"}),
                 # Ollama Automatic VRAM Unload
                 "ollama_auto_unload": ("BOOLEAN", {"default": True, "label_on": "Enable", "label_off": "Disable", "tooltip": "Auto unload Ollama model after generation"}),
+                "seed": ("INT", {"default": 0, "min": 0, "max": 0xffffffffffffffff, "control_after_generate": True}),
             },
         }
 
@@ -87,15 +88,11 @@ class KontextPresetNode(VLMNodeBase):
     OUTPUT_NODE = False
     
     @classmethod
-    def IS_CHANGED(cls, image=None, kontext_preset=None, user_prompt=None, vlm_service=None, ollama_auto_unload=None):
+    def IS_CHANGED(cls, image=None, kontext_preset=None, user_prompt=None, vlm_service=None, ollama_auto_unload=None, seed=None):
         """
         只在输入内容真正变化时才触发重新执行
         使用输入参数的哈希值作为判断依据
         """
-        # 检查是否包含强制刷新符号 [R]
-        if cls._check_is_changed_bypass(kontext_preset, user_prompt):
-            return float("nan")
-
         # 导入图像哈希工具函数
         from ..utils.image import compute_image_hash
         
@@ -108,12 +105,13 @@ class KontextPresetNode(VLMNodeBase):
             kontext_preset,
             user_prompt,
             vlm_service,
-            bool(ollama_auto_unload)
+            bool(ollama_auto_unload),
+            seed
         ))
 
         return input_hash
     
-    def analyze_image(self, image, kontext_preset, user_prompt, vlm_service, ollama_auto_unload):
+    def analyze_image(self, image, kontext_preset, user_prompt, vlm_service, ollama_auto_unload, seed=None):
         """
         使用Kontext预设分析图像并生成创意转换指令
 

@@ -65,14 +65,15 @@ class VideoCaptionNode(VLMNodeBase):
             "required": {
                 "rule": (prompt_template_options, {"default": prompt_template_options[0] if prompt_template_options else "默认视频反推提示词", "tooltip": "💡Template Config: Settings -> ✨Prompt Assistant -> Rule Editor"}),
                 "custom_rule": ("BOOLEAN", {"default": False, "label_on": "Enable", "label_off": "Disable", "tooltip": "⚠️ Enable to use custom rule content below instead of preset"}),
-                "custom_rule_content": ("STRING", {"multiline": True, "default": "", "placeholder": "请输入临时规则内容,仅在启用'临时规则'时生效", "tooltip": "在此输入您的自定义规则内容; 💡输入触发词[R],可以让节点每次都被执行"}),
-                "user_prompt": ("STRING", {"multiline": True, "default": "", "placeholder": "输入额外的具体要求，将与规则一起发送给模型", "tooltip": "输入额外的具体要求，将与规则一起发送给模型; 💡输入触发词[R],可以让节点每次都被执行"}),
+                "custom_rule_content": ("STRING", {"multiline": True, "default": "", "placeholder": "请输入临时规则内容,仅在启用'临时规则'时生效", "tooltip": "在此输入您的自定义规则内容"}),
+                "user_prompt": ("STRING", {"multiline": True, "default": "", "placeholder": "输入额外的具体要求，将与规则一起发送给模型", "tooltip": "输入额外的具体要求，将与规则一起发送给模型"}),
                 "vlm_service": (service_options, {"default": default_service, "tooltip": "Select VLM service and model"}),
                 "sampling_mode": (["Auto (Uniform)", "Manual (Indices)"], {"default": "Auto (Uniform)"}),
                 "frame_count": ("INT", {"default": 5, "min": 1, "max": 32, "step": 1, "tooltip": "💡Only for 'Auto' mode. Frame limits: GLM-4V≤5, GLM-4.6V≤100, Qwen-VL≤100, Gemini≤3000, Grok≤10"}),
                 "manual_indices": ("STRING", {"default": "", "placeholder": "Input indices (e.g. 0,10,20) or range (e.g. 0-10)", "tooltip": "💡Only for 'Manual' mode. Supports comma-separated or range. Negative indices allowed."}),
                 # Ollama Automatic VRAM Unload
                 "ollama_auto_unload": ("BOOLEAN", {"default": True, "label_on": "Enable", "label_off": "Disable", "tooltip": "Auto unload Ollama model after generation"}),
+                "seed": ("INT", {"default": 0, "min": 0, "max": 0xffffffffffffffff, "control_after_generate": True}),
             },
             "hidden": {
                 "unique_id": "UNIQUE_ID",
@@ -90,14 +91,10 @@ class VideoCaptionNode(VLMNodeBase):
     OUTPUT_NODE = False
     
     @classmethod
-    def IS_CHANGED(cls, video=None, image_sequence=None, rule=None, custom_rule=None, custom_rule_content=None, user_prompt=None, vlm_service=None, sampling_mode=None, frame_count=None, manual_indices=None, ollama_auto_unload=None, unique_id=None):
+    def IS_CHANGED(cls, video=None, image_sequence=None, rule=None, custom_rule=None, custom_rule_content=None, user_prompt=None, vlm_service=None, sampling_mode=None, frame_count=None, manual_indices=None, ollama_auto_unload=None, seed=None, unique_id=None):
         """
         只在输入内容真正变化时才触发重新执行
         """
-        # 检查是否包含强制刷新符号 [R]
-        if cls._check_is_changed_bypass(rule, custom_rule_content, user_prompt):
-            return float("nan")
-
         # 提取实际的tensor数据
         target_input = None
         if video is not None:
@@ -150,12 +147,13 @@ class VideoCaptionNode(VLMNodeBase):
             sampling_mode,
             frame_count,
             manual_indices,
-            bool(ollama_auto_unload)
+            bool(ollama_auto_unload),
+            seed
         ))
 
         return input_hash
     
-    def analyze_video_content(self, rule, custom_rule, custom_rule_content, user_prompt, vlm_service, sampling_mode, frame_count, manual_indices, ollama_auto_unload, video=None, image_sequence=None, unique_id=None):
+    def analyze_video_content(self, rule, custom_rule, custom_rule_content, user_prompt, vlm_service, sampling_mode, frame_count, manual_indices, ollama_auto_unload, seed=None, video=None, image_sequence=None, unique_id=None):
         """
         分析视频或图像序列并生成提示词(使用抽帧模式)
         """

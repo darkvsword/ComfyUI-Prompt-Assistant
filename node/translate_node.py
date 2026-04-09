@@ -29,11 +29,12 @@ class PromptTranslate(LLMNodeBase):
         
         return {
             "required": {
-                "source_text": ("STRING", {"forceInput": True, "default": "", "multiline": True, "placeholder": "Input text to translate...", "tooltip": "需要翻译的文本; 💡输入触发词[R],可以让节点每次都被执行"}),
+                "source_text": ("STRING", {"forceInput": True, "default": "", "multiline": True, "placeholder": "Input text to translate...", "tooltip": "需要翻译的文本"}),
                 "target_language": (["English", "Chinese"], {"default": "English"}),
                 "translate_service": (service_options, {"default": default_service, "tooltip": "Select translation service and model"}),
                 # Ollama Automatic VRAM Unload
                 "ollama_auto_unload": ("BOOLEAN", {"default": True, "label_on": "Enable", "label_off": "Disable", "tooltip": "Auto unload Ollama model after generation"}),
+                "seed": ("INT", {"default": 0, "min": 0, "max": 0xffffffffffffffff, "control_after_generate": True}),
             },
             "hidden": {
                 "unique_id": "UNIQUE_ID",
@@ -47,15 +48,11 @@ class PromptTranslate(LLMNodeBase):
     OUTPUT_NODE = False
     
     @classmethod
-    def IS_CHANGED(cls, source_text=None, target_language=None, translate_service=None, ollama_auto_unload=None, unique_id=None):
+    def IS_CHANGED(cls, source_text=None, target_language=None, translate_service=None, ollama_auto_unload=None, seed=None, unique_id=None):
         """
         只在输入内容真正变化时才触发重新执行
         使用输入参数的哈希值作为判断依据
         """
-        # 检查是否包含强制刷新符号 [R]
-        if cls._check_is_changed_bypass(source_text):
-            return float("nan")
-
         # 计算文本的哈希值
         text_hash = ""
         if source_text:
@@ -67,7 +64,8 @@ class PromptTranslate(LLMNodeBase):
             text_hash,
             target_language,
             translate_service,
-            bool(ollama_auto_unload)
+            bool(ollama_auto_unload),
+            seed
         ))
 
         return input_hash
@@ -95,7 +93,7 @@ class PromptTranslate(LLMNodeBase):
         else:
             return "auto"
     
-    def translate(self, source_text, target_language, translate_service, ollama_auto_unload, unique_id=None):
+    def translate(self, source_text, target_language, translate_service, ollama_auto_unload, seed=None, unique_id=None):
         """
         翻译文本函数
         """

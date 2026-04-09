@@ -13,11 +13,11 @@
             },
             "custom_rule_content": {
                 "name": "Conteúdo da Regra",
-                "tooltip": "Insira sua regra personalizada aqui; 💡Digite a palavra-gatilho [R] para forçar a reexecução"
+                "tooltip": "Insira sua regra personalizada aqui"
             },
             "user_prompt": {
                 "name": "Prompt do Usuário",
-                "tooltip": "Seu prompt a ser expandido; 💡Digite a palavra-gatilho [R] para forçar a reexecução"
+                "tooltip": "Seu prompt a ser expandido"
             },
             "llm_service": {
                 "name": "Serviço LLM",
@@ -29,7 +29,7 @@
             },
             "source_text": {
                 "name": "Texto de Origem",
-                "tooltip": "Entrada de texto opcional; 💡Digite a palavra-gatilho [R] para forçar a reexecução"
+                "tooltip": "Entrada de texto opcional"
             }
         },
         "outputs": {
@@ -57,11 +57,11 @@
             },
             "custom_rule_content": {
                 "name": "Conteúdo da Regra",
-                "tooltip": "Conteúdo da regra personalizada; 💡Digite a palavra-gatilho [R] para forçar a reexecução"
+                "tooltip": "Conteúdo da regra personalizada"
             },
             "user_prompt": {
                 "name": "Prompt do Usuário",
-                "tooltip": "Insira prompts adicionais aqui, enviados com a regra; 💡Digite a palavra-gatilho [R] para forçar a reexecução"
+                "tooltip": "Insira prompts adicionais aqui, enviados com a regra"
             },
             "vlm_service": {
                 "name": "Serviço VLM",
@@ -89,7 +89,7 @@
         "inputs": {
             "source_text": {
                 "name": "Texto de Origem",
-                "tooltip": "Texto a ser traduzido; 💡Digite a palavra-gatilho [R] para forçar a reexecução"
+                "tooltip": "Texto a ser traduzido"
             },
             "target_language": {
                 "name": "Idioma de Destino",
@@ -129,11 +129,11 @@
             },
             "custom_rule_content": {
                 "name": "Conteúdo da Regra",
-                "tooltip": "Conteúdo da regra personalizada; 💡Digite a palavra-gatilho [R] para forçar a reexecução"
+                "tooltip": "Conteúdo da regra personalizada"
             },
             "user_prompt": {
                 "name": "Prompt do Usuário",
-                "tooltip": "Insira prompts adicionais aqui, enviados com a regra; 💡Digite a palavra-gatilho [R] para forçar a reexecução"
+                "tooltip": "Insira prompts adicionais aqui, enviados com a regra"
             },
             "vlm_service": {
                 "name": "Serviço VLM",
@@ -193,7 +193,7 @@
             },
             "user_prompt": {
                 "name": "Prompt do Usuário",
-                "tooltip": "Insira prompts adicionais aqui, enviados com a predefinição; 💡Digite a palavra-gatilho [R] para forçar a reexecução"
+                "tooltip": "Insira prompts adicionais aqui, enviados com a predefinição"
             },
             "vlm_service": {
                 "name": "Serviço VLM",

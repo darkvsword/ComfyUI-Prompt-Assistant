@@ -13,11 +13,11 @@
             },
             "custom_rule_content": {
                 "name": "Özel Kural İçeriği",
-                "tooltip": "Özel kuralınızı buraya girin; 💡Tekrar çalıştırmayı zorlamak için [R] tetikleyici kelimesini girin"
+                "tooltip": "Özel kuralınızı buraya girin"
             },
             "user_prompt": {
                 "name": "Kullanıcı İstemi",
-                "tooltip": "Geliştirilecek istem; 💡Tekrar çalıştırmayı zorlamak için [R] tetikleyici kelimesini girin"
+                "tooltip": "Geliştirilecek istem"
             },
             "llm_service": {
                 "name": "LLM Servisi",
@@ -29,7 +29,7 @@
             },
             "source_text": {
                 "name": "Kaynak Metin",
-                "tooltip": "İsteğe bağlı metin girişi; 💡Tekrar çalıştırmayı zorlamak için [R] tetikleyici kelimesini girin"
+                "tooltip": "İsteğe bağlı metin girişi"
             }
         },
         "outputs": {
@@ -57,11 +57,11 @@
             },
             "custom_rule_content": {
                 "name": "Özel Kural İçeriği",
-                "tooltip": "Özel kural içeriği; 💡Tekrar çalıştırmayı zorlamak için [R] tetikleyici kelimesini girin"
+                "tooltip": "Özel kural içeriği"
             },
             "user_prompt": {
                 "name": "Kullanıcı İstemi",
-                "tooltip": "Kural ile gönderilecek ek istemleri buraya girin; 💡Tekrar çalıştırmayı zorlamak için [R] tetikleyici kelimesini girin"
+                "tooltip": "Kural ile gönderilecek ek istemleri buraya girin"
             },
             "vlm_service": {
                 "name": "VLM Servisi",
@@ -89,7 +89,7 @@
         "inputs": {
             "source_text": {
                 "name": "Kaynak Metin",
-                "tooltip": "Çevrilecek metin; 💡Tekrar çalıştırmayı zorlamak için [R] tetikleyici kelimesini girin"
+                "tooltip": "Çevrilecek metin"
             },
             "target_language": {
                 "name": "Hedef Dil",
@@ -129,11 +129,11 @@
             },
             "custom_rule_content": {
                 "name": "Özel Kural İçeriği",
-                "tooltip": "Özel kural içeriği; 💡Tekrar çalıştırmayı zorlamak için [R] tetikleyici kelimesini girin"
+                "tooltip": "Özel kural içeriği"
             },
             "user_prompt": {
                 "name": "Kullanıcı İstemi",
-                "tooltip": "Kural ile gönderilecek ek istemleri buraya girin; 💡Tekrar çalıştırmayı zorlamak için [R] tetikleyici kelimesini girin"
+                "tooltip": "Kural ile gönderilecek ek istemleri buraya girin"
             },
             "vlm_service": {
                 "name": "VLM Servisi",
@@ -193,7 +193,7 @@
             },
             "user_prompt": {
                 "name": "Kullanıcı İstemi",
-                "tooltip": "Önayar ile gönderilecek ek istemleri buraya girin; 💡Tekrar çalıştırmayı zorlamak için [R] tetikleyici kelimesini girin"
+                "tooltip": "Önayar ile gönderilecek ek istemleri buraya girin"
             },
             "vlm_service": {
                 "name": "VLM Servisi",

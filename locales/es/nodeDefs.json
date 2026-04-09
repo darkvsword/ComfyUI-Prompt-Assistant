@@ -13,11 +13,11 @@
             },
             "custom_rule_content": {
                 "name": "Contenido de regla personalizada",
-                "tooltip": "Ingrese su regla personalizada aquí;💡Ingrese la palabra de activación [R] para forzar la reejecución"
+                "tooltip": "Ingrese su regla personalizada aquí"
             },
             "user_prompt": {
                 "name": "Aviso de usuario",
-                "tooltip": "Su mensaje para ser mejorado;💡Ingrese la palabra de activación [R] para forzar la reejecución"
+                "tooltip": "Su mensaje para ser mejorado"
             },
             "llm_service": {
                 "name": "Servicio de Maestría en Derecho",
@@ -29,7 +29,7 @@
             },
             "source_text": {
                 "name": "Texto fuente",
-                "tooltip": "Texto de entrada opcional;💡Ingrese la palabra de activación [R] para forzar la reejecución"
+                "tooltip": "Texto de entrada opcional"
             }
         },
         "outputs": {
@@ -57,11 +57,11 @@
             },
             "custom_rule_content": {
                 "name": "Contenido de regla personalizada",
-                "tooltip": "Contenido de reglas personalizadas;💡Ingrese la palabra de activación [R] para forzar la reejecución"
+                "tooltip": "Contenido de reglas personalizadas"
             },
             "user_prompt": {
                 "name": "Aviso de usuario",
-                "tooltip": "Introduzca aquí indicaciones adicionales, enviadas con la regla;💡Ingrese la palabra de activación [R] para forzar la reejecución"
+                "tooltip": "Introduzca aquí indicaciones adicionales, enviadas con la regla"
             },
             "vlm_service": {
                 "name": "Servicio VLM",
@@ -89,7 +89,7 @@
         "inputs": {
             "source_text": {
                 "name": "Texto fuente",
-                "tooltip": "Texto a traducir;💡Ingrese la palabra de activación [R] para forzar la reejecución"
+                "tooltip": "Texto a traducir"
             },
             "target_language": {
                 "name": "Lengua de llegada",
@@ -129,11 +129,11 @@
             },
             "custom_rule_content": {
                 "name": "Contenido de regla personalizada",
-                "tooltip": "Contenido de reglas personalizadas;💡Ingrese la palabra de activación [R] para forzar la reejecución"
+                "tooltip": "Contenido de reglas personalizadas"
             },
             "user_prompt": {
                 "name": "Aviso de usuario",
-                "tooltip": "Introduzca aquí indicaciones adicionales, enviadas con la regla;💡Ingrese la palabra de activación [R] para forzar la reejecución"
+                "tooltip": "Introduzca aquí indicaciones adicionales, enviadas con la regla"
             },
             "vlm_service": {
                 "name": "Servicio VLM",
@@ -193,7 +193,7 @@
             },
             "user_prompt": {
                 "name": "Aviso de usuario",
-                "tooltip": "Introduzca aquí indicaciones adicionales, enviadas con el valor preestablecido;💡Ingrese la palabra de activación [R] para forzar la reejecución"
+                "tooltip": "Introduzca aquí indicaciones adicionales, enviadas con el valor preestablecido"
             },
             "vlm_service": {
                 "name": "Servicio VLM",

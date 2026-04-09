@@ -13,11 +13,11 @@
             },
             "custom_rule_content": {
                 "name": "Contenu des règles personnalisées",
-                "tooltip": "Entrez votre règle personnalisée ici ;💡Saisissez le mot déclencheur [R] pour forcer la réexécution"
+                "tooltip": "Entrez votre règle personnalisée ici "
             },
             "user_prompt": {
                 "name": "Invite utilisateur",
-                "tooltip": "Votre invite à être améliorée ;💡Saisissez le mot déclencheur [R] pour forcer la réexécution"
+                "tooltip": "Votre invite à être améliorée "
             },
             "llm_service": {
                 "name": "Service LLM",
@@ -29,7 +29,7 @@
             },
             "source_text": {
                 "name": "Texte source",
-                "tooltip": "Texte de saisie facultatif ;💡Saisissez le mot déclencheur [R] pour forcer la réexécution"
+                "tooltip": "Texte de saisie facultatif "
             }
         },
         "outputs": {
@@ -57,11 +57,11 @@
             },
             "custom_rule_content": {
                 "name": "Contenu des règles personnalisées",
-                "tooltip": "Contenu des règles personnalisées ;💡Saisissez le mot déclencheur [R] pour forcer la réexécution"
+                "tooltip": "Contenu des règles personnalisées "
             },
             "user_prompt": {
                 "name": "Invite utilisateur",
-                "tooltip": "Entrez ici des invites supplémentaires, envoyées avec la règle ;💡Saisissez le mot déclencheur [R] pour forcer la réexécution"
+                "tooltip": "Entrez ici des invites supplémentaires, envoyées avec la règle "
             },
             "vlm_service": {
                 "name": "Service VLM",
@@ -89,7 +89,7 @@
         "inputs": {
             "source_text": {
                 "name": "Texte source",
-                "tooltip": "Texte à traduire ;💡Saisissez le mot déclencheur [R] pour forcer la réexécution"
+                "tooltip": "Texte à traduire "
             },
             "target_language": {
                 "name": "Langue cible",
@@ -129,11 +129,11 @@
             },
             "custom_rule_content": {
                 "name": "Contenu des règles personnalisées",
-                "tooltip": "Contenu des règles personnalisées ;💡Saisissez le mot déclencheur [R] pour forcer la réexécution"
+                "tooltip": "Contenu des règles personnalisées "
             },
             "user_prompt": {
                 "name": "Invite utilisateur",
-                "tooltip": "Entrez ici des invites supplémentaires, envoyées avec la règle ;💡Saisissez le mot déclencheur [R] pour forcer la réexécution"
+                "tooltip": "Entrez ici des invites supplémentaires, envoyées avec la règle "
             },
             "vlm_service": {
                 "name": "Service VLM",
@@ -193,7 +193,7 @@
             },
             "user_prompt": {
                 "name": "Invite utilisateur",
-                "tooltip": "Entrez ici des invites supplémentaires, envoyées avec le préréglage ;💡Saisissez le mot déclencheur [R] pour forcer la réexécution"
+                "tooltip": "Entrez ici des invites supplémentaires, envoyées avec le préréglage "
             },
             "vlm_service": {
                 "name": "Service VLM",

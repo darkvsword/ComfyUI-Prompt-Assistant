@@ -63,11 +63,12 @@ class ImageCaptionNode(VLMNodeBase):
                 "image": ("IMAGE",),
                 "rule": (prompt_template_options, {"default": prompt_template_options[0] if prompt_template_options else "默认中文反推提示词", "tooltip": "Choose a preset rule for image captioning"}),
                 "custom_rule": ("BOOLEAN", {"default": False, "label_on": "Enable", "label_off": "Disable", "tooltip": "Enable to use custom rule content below"}),
-                "custom_rule_content": ("STRING", {"multiline": True, "default": "", "placeholder": "在此输入临时规则，仅在启用'临时规则'时生效", "tooltip": "在此输入您的自定义规则内容; 💡输入触发词[R],可以让节点每次都被执行"}),
-                "user_prompt": ("STRING", {"multiline": True, "default": "", "placeholder": "输入额外的具体要求，将与规则一起发送给模型", "tooltip": "输入额外的具体要求，将与规则一起发送给模型; 💡输入触发词[R],可以让节点每次都被执行"}),
+                "custom_rule_content": ("STRING", {"multiline": True, "default": "", "placeholder": "在此输入临时规则，仅在启用'临时规则'时生效", "tooltip": "在此输入您的自定义规则内容"}),
+                "user_prompt": ("STRING", {"multiline": True, "default": "", "placeholder": "输入额外的具体要求，将与规则一起发送给模型", "tooltip": "输入额外的具体要求，将与规则一起发送给模型"}),
                 "vlm_service": (service_options, {"default": default_service, "tooltip": "Select VLM service and model"}),
                 # Ollama Automatic VRAM Unload
                 "ollama_auto_unload": ("BOOLEAN", {"default": True, "label_on": "Enable", "label_off": "Disable", "tooltip": "Auto unload Ollama model after generation"}),
+                "seed": ("INT", {"default": 0, "min": 0, "max": 0xffffffffffffffff, "control_after_generate": True}),
             },
             "hidden": {
                 "unique_id": "UNIQUE_ID",
@@ -82,15 +83,11 @@ class ImageCaptionNode(VLMNodeBase):
     OUTPUT_NODE = False
     
     @classmethod
-    def IS_CHANGED(cls, image=None, rule=None, custom_rule=None, custom_rule_content=None, user_prompt=None, vlm_service=None, ollama_auto_unload=None, unique_id=None):
+    def IS_CHANGED(cls, image=None, rule=None, custom_rule=None, custom_rule_content=None, user_prompt=None, vlm_service=None, ollama_auto_unload=None, seed=None, unique_id=None):
         """
         只在输入内容真正变化时才触发重新执行
         使用输入参数的哈希值作为判断依据
         """
-        # 检查是否包含强制刷新符号 [R]
-        if cls._check_is_changed_bypass(rule, custom_rule_content, user_prompt):
-            return float("nan")
-
         # 导入图像哈希工具函数
         from ..utils.image import compute_image_hash
         
@@ -105,7 +102,8 @@ class ImageCaptionNode(VLMNodeBase):
             custom_rule_content,
             user_prompt,
             vlm_service,
-            bool(ollama_auto_unload)
+            bool(ollama_auto_unload),
+            seed
         ))
 
         return input_hash
@@ -172,7 +170,7 @@ class ImageCaptionNode(VLMNodeBase):
             log_error(TASK_IMAGE_CAPTION, request_id, error_msg, source=SOURCE_NODE)
             raise RuntimeError(f"分析失败: {error_msg}")
 
-    def analyze_image(self, image, rule, custom_rule, custom_rule_content, user_prompt, vlm_service, ollama_auto_unload, unique_id=None):
+    def analyze_image(self, image, rule, custom_rule, custom_rule_content, user_prompt, vlm_service, ollama_auto_unload, seed=None, unique_id=None):
         """
         分析图像并生成提示词（支持 batch 遍历）
 
