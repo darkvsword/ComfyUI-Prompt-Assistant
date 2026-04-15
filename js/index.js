@@ -523,7 +523,6 @@ app.registerExtension({
 
         // 注入创建钩子 (原型级补救)
         proto.onNodeCreated = function () {
-            console.log(`[PA-DEBUG] onNodeCreated called for node type: ${nodeData.name}`, this);
             if (origOnCreated) origOnCreated.apply(this, arguments);
             self._handleNodeActive(this, { delay: true });
         };

@@ -64,6 +64,29 @@ class UIToolkit {
             isValid = true;
             reason = 'Vue node2.0 mode widget';
         }
+        // 方法5: 代理 Widget 解包 (例如子图上的 PromotedWidgetView)
+        else if (typeof widget.resolveDeepest === 'function') {
+            try {
+                const deepest = widget.resolveDeepest();
+                if (deepest && deepest.widget) {
+                    const realWidget = deepest.widget;
+                    const realWidgetName = (realWidget.name || '').toLowerCase();
+                    const typeLower = (realWidget.type || '').toLowerCase();
+                    if (typeLower === "customtext" || 
+                        (typeLower === "string" && realWidget.options?.multiline) || 
+                        this.VALID_INPUT_IDS.includes(realWidget.name) || realWidgetName.includes('prompt')) {
+                        isValid = true;
+                        reason = 'Unwrapped PromotedWidgetView matched';
+                    }
+                }
+            } catch (e) {
+                const name = (widget.name || widget.sourceWidgetName || '').toLowerCase();
+                if (this.VALID_INPUT_IDS.includes(widget.name) || name.includes('prompt')) {
+                    isValid = true;
+                    reason = 'PromotedWidgetView name matched fallback';
+                }
+            }
+        }
 
         // ---可见性检测补救---
         // 如果基本检测通过，但元素本身是隐藏的，则视为无效

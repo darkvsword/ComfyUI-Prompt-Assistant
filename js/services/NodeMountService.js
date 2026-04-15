@@ -316,12 +316,21 @@ class NodeMountService {
      */
     _isTextareaWidget(widget) {
         if (!widget) return false;
-        // 1. 明确的 customtext 类型
-        if (widget.type === 'customtext') return true;
+        
+        let targetWidget = widget;
+        if (typeof widget.resolveDeepest === 'function') {
+            try {
+                const deepest = widget.resolveDeepest();
+                if (deepest && deepest.widget) targetWidget = deepest.widget;
+            } catch (e) {}
+        }
+        
+        // 1. 明确的 customtext 类型 或 string
+        if (targetWidget.type === 'customtext' || targetWidget.type === 'string') return true;
         // 2. STRING 类型且 multiline: true
-        if (widget.type === 'STRING' && widget.options?.multiline) return true;
+        if (targetWidget.type === 'STRING' && targetWidget.options?.multiline) return true;
         // 3. 已经绑定了 textarea 元素
-        if (widget.element && widget.element.tagName === 'TEXTAREA') return true;
+        if (targetWidget.element && targetWidget.element.tagName === 'TEXTAREA') return true;
 
         return false;
     }
@@ -334,6 +343,14 @@ class NodeMountService {
      */
     _findVueNodeContainer(node, widget) {
         try {
+            let targetWidget = widget;
+            if (typeof widget.resolveDeepest === 'function') {
+                try {
+                    const deepest = widget.resolveDeepest();
+                    if (deepest && deepest.widget) targetWidget = deepest.widget;
+                } catch (e) {}
+            }
+
             // 查找带有 data-node-id 的 Vue 节点容器
             const nodeContainer = document.querySelector(`[data-node-id="${node.id}"]`);
             if (!nodeContainer) {
@@ -342,7 +359,7 @@ class NodeMountService {
             }
 
             // 获取widget名称用于查找对应的textarea
-            const widgetName = widget.name || widget.id;
+            const widgetName = targetWidget.name || targetWidget.id || widget.name;
             let textarea = null;
 
             // 识别节点类型
@@ -350,9 +367,9 @@ class NodeMountService {
             const isMarkdown = this._isMarkdownNode(node);
 
             // --- 策略1: 优先使用 widget.inputEl (如果已绑定且为 PrimeVue 组件) ---
-            if (widget.inputEl && widget.inputEl.tagName === 'TEXTAREA') {
-                if (nodeContainer.contains(widget.inputEl)) {
-                    textarea = widget.inputEl;
+            if (targetWidget.inputEl && targetWidget.inputEl.tagName === 'TEXTAREA') {
+                if (nodeContainer.contains(targetWidget.inputEl)) {
+                    textarea = targetWidget.inputEl;
 
                 }
             }
@@ -366,7 +383,12 @@ class NodeMountService {
 
                 for (const w of node.widgets) {
                     if (this._isTextareaWidget(w)) {
-                        if (w === widget || w.name === widget.name) { // 兼容对象引用或名称匹配
+                        if (w === widget) {
+                            targetIndex = currentIndex;
+                            break;
+                        }
+                        // 如果传入的是只包含 name 的桩对象 (旧逻辑遗留保障)，则按名字匹配，但需注意可能匹配到同名第一个
+                        else if (!targetWidget.node && w.name && w.name === widget.name) {
                             targetIndex = currentIndex;
                             break;
                         }
@@ -469,7 +491,15 @@ class NodeMountService {
      */
     _findDomWidgetContainer(node, widget) {
         try {
-            const inputEl = widget.inputEl || widget.element;
+            let targetWidget = widget;
+            if (typeof widget.resolveDeepest === 'function') {
+                try {
+                    const deepest = widget.resolveDeepest();
+                    if (deepest && deepest.widget) targetWidget = deepest.widget;
+                } catch (e) {}
+            }
+
+            const inputEl = targetWidget.inputEl || targetWidget.element;
             if (!inputEl) {
                 logger.debug('[NodeMountService] Litegraph模式: 输入元素不存在');
                 return null;
@@ -496,7 +526,7 @@ class NodeMountService {
                 container: domWidgetContainer,
                 textarea: inputEl,
                 mode: RENDER_MODE.LITEGRAPH,
-                widgetName: widget.name || widget.id
+                widgetName: targetWidget.name || targetWidget.id
             };
         } catch (e) {
             logger.error(`[NodeMountService] dom-widget容器查找失败: ${e.message}`);

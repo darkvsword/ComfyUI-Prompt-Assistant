@@ -678,12 +678,16 @@ class PromptAssistant {
             (node.constructor && node.constructor.name === 'Subgraph');
 
         if (isVueMode && (isMarkdownNode || isUUIDType || isSubgraphType)) {
-            // Vue mode下这些节点类型直接视为有效
+            // logger.debug(`[isValidNode] Vue+Special match: ${node.type}`);
             return true;
         }
 
+        const valid = !!node.widgets;
+        if (!valid) {
+            // logger.debug(`[isValidNode] Fallback check: ${node.type}`);
+        }
         // 标准检查：需要有widgets属性
-        return !!node.widgets;
+        return valid;
     }
 
     /**
@@ -722,6 +726,8 @@ class PromptAssistant {
         if (!window.FEATURES.enabled || !node) return;
 
         const isVueMode = LiteGraph.vueNodesMode === true;
+        const graph = node.graph || app.graph;
+        const graphId = graph?.id || graph?._workflow_id || 'main';
 
 
 
@@ -853,6 +859,8 @@ class PromptAssistant {
         const isMarkdown = this._isMarkdownNode(node);
         const isSubgraph = this._isSubgraphNode(node);
 
+        // logger.debug(`[_handleVueDomScanNode] Scanning: ${node.type}`);
+
         // 仅处理我们识别的有效节点
         if (!isMarkdown && !isSubgraph) return;
 
@@ -875,6 +883,7 @@ class PromptAssistant {
         if (textareas.length === 0) {
             // 可能是 TipTap 编辑器（针对 Note 节点）
             const editor = nodeContainer.querySelector('.tiptap') || nodeContainer.querySelector('.ProseMirror');
+            // logger.debug(`[Vue扫描] 节点无文本框 | ID: ${node.id}`);
             if (editor) {
                 this._mountDomAssistant(node, editor, 'text', 0);
             }
@@ -935,7 +944,7 @@ class PromptAssistant {
         const assistant = this.createAssistant(node, inputId, virtualWidget, nodeInfo, assistantKey);
         if (assistant) {
             this.showAssistantUI(assistant);
-            logger.debugSample(() => `[DOM扫描] ${node.type}节点挂载成功 | ID: ${node.id} | Key: ${assistantKey}`);
+            // logger.debugSample(() => `[DOM扫描] ${node.type}节点挂载成功 | ID: ${node.id} | Key: ${assistantKey}`);
         }
     }
 
@@ -991,9 +1000,13 @@ class PromptAssistant {
                     inputEl: inputEl,
                     _needsDelayedTextareaLookup: isVueMode && !inputEl
                 };
-
-            } else {
-
+            }
+            // 补充注入查找到的真实 textarea (解决 Litegraph 下 PromotedWidgetView 获取不到 inputEl 导致中止的问题)
+            const mountContainer = nodeMountService.findMountContainer(node, inputWidget);
+            if (mountContainer && mountContainer.textarea) {
+                processedWidget = Object.create(processedWidget);
+                processedWidget.inputEl = mountContainer.textarea;
+                processedWidget.element = mountContainer.textarea;
             }
 
             // 创建小助手实例
@@ -1337,7 +1350,7 @@ class PromptAssistant {
 
 
 
-            this._setupUIPosition(widget, inputEl, containerEl, canvasContainerRect, (success) => {
+            this._setupUIPosition(widget, inputEl, containerEl, canvasContainerRect, inputWidget, (success) => {
 
                 if (widget.isDestroyed) {
                     logger.debug(`[定位] 回调跳过：实例已销毁 | ID: ${nodeId}`);
@@ -2591,7 +2604,7 @@ class PromptAssistant {
      * 支持 Vue node2.0 和 litegraph.js 两种渲染模式
      * @param {Function} onComplete - 定位完成回调，接收boolean参数，true表示成功，false表示失败
      */
-    _setupUIPosition(widget, inputEl, containerDiv, canvasContainerRect, onComplete) {
+    _setupUIPosition(widget, inputEl, containerDiv, canvasContainerRect, inputWidget, onComplete) {
 
 
         // 清理函数列表
@@ -2607,8 +2620,8 @@ class PromptAssistant {
         }
 
 
-        // 创建widget对象用于容器查找
-        const widgetObj = {
+        // 使用真实的 inputWidget，用于适配 Subgraph 的 PromotedWidgetView 解包
+        const widgetObj = inputWidget || {
             inputEl: inputEl,
             element: inputEl,
             name: widget.inputId,
