@@ -72,7 +72,7 @@ class VideoCaptionNode(VLMNodeBase, io.ComfyNode):
                 # 而很多其他节点出来的视频类型是直接的 IMAGE batch（一堆图片张量）
                 # 我们同时提供两个端口以实现最大程度的兼容
                 io.Image.Input("video_frames", tooltip="The video frames to analyze (IMAGE batch)", optional=True),
-                io.Custom.Input("video", "VIDEO", tooltip="Compatible with VIDEO type nodes (like VHS)", optional=True),
+                io.Video.Input("video", tooltip="Compatible with VIDEO type nodes (like VHS)", optional=True),
                 io.Combo.Input(
                     "rule",
                     options=prompt_template_options,

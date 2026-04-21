@@ -175,13 +175,13 @@
                 "name": "Vídeo",
                 "tooltip": "Vídeo de entrada"
             },
-            "image_sequence": {
-                "name": "Imagens",
-                "tooltip": "Sequência de imagens de entrada"
-            },
             "seed": {
                 "name": "Semente",
                 "tooltip": "Controla a aleatoriedade da geração. Selecione um modo não fixo para forçar a reexecução"
+            },
+            "video_frames": {
+                "name": "Quadros de vídeo (IMAGE)",
+                "tooltip": "Sequência de quadros de vídeo (IMAGE batch)"
             }
         },
         "outputs": {

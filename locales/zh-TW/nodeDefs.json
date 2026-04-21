@@ -172,16 +172,16 @@
                 "tooltip": "生成完成後自動釋放Ollama模型顯存"
             },
             "video": {
-                "name": "視頻",
+                "name": "影片",
                 "tooltip": "輸入視頻"
-            },
-            "image_sequence": {
-                "name": "圖像序列",
-                "tooltip": "輸入圖像序列"
             },
             "seed": {
                 "name": "隨機種子",
                 "tooltip": "控制生成的隨機性。選擇非固定模式可強制節點重新執行"
+            },
+            "video_frames": {
+                "name": "影片幀 (IMAGE)",
+                "tooltip": "輸入影片帧序列（IMAGE batch）"
             }
         },
         "outputs": {

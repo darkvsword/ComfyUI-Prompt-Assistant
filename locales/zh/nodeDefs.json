@@ -175,9 +175,9 @@
                 "name": "视频",
                 "tooltip": "输入视频"
             },
-            "image_sequence": {
-                "name": "图像序列",
-                "tooltip": "输入图像序列"
+            "video_frames": {
+                "name": "视频帧 (IMAGE)",
+                "tooltip": "输入视频帧序列（IMAGE batch）"
             },
             "seed": {
                 "name": "随机种子",

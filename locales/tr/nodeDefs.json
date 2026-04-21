@@ -175,13 +175,13 @@
                 "name": "Video",
                 "tooltip": "Girdi videosu"
             },
-            "image_sequence": {
-                "name": "Görüntüler",
-                "tooltip": "Girdi görüntü dizisi"
-            },
             "seed": {
                 "name": "Tohum",
                 "tooltip": "Üretimin rastgeleliğini kontrol eder. Yeniden yürütmeyi zorlamak için sabit olmayan bir mod seçin"
+            },
+            "video_frames": {
+                "name": "Video Kareleri (IMAGE)",
+                "tooltip": "Video karesi dizisi (IMAGE batch)"
             }
         },
         "outputs": {

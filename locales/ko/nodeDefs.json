@@ -175,13 +175,13 @@
                 "name": "동영상",
                 "tooltip": "입력 비디오"
             },
-            "image_sequence": {
-                "name": "이미지",
-                "tooltip": "입력 이미지 시퀀스"
-            },
             "seed": {
                 "name": "시드",
                 "tooltip": "생성의 무작위성을 제어합니다. 고정되지 않은 모드를 선택하면 재실행이 강제됩니다"
+            },
+            "video_frames": {
+                "name": "비디오 프레임 (IMAGE)",
+                "tooltip": "비디오 프레임 시퀀스 (IMAGE batch)"
             }
         },
         "outputs": {
