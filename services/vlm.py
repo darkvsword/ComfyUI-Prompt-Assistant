@@ -214,12 +214,12 @@ class VisionService(OpenAICompatibleService):
                             chunk_data = json.loads(line)
                             message = chunk_data.get('message')
                             if message and isinstance(message, dict):
+                                # Ollama 流式响应解析：
+                                # - message.content: 正式答案内容，直接追加
+                                # - message.thinking: Ollama 原生思考字段，不追加（避免污染 full_content）
+                                #   当 think:true 参数生效时，thinking 字段为空，content 字段为答案
+                                #   当模型不支持 think 参数时，thinking 字段可能有内容，但 content 也有真实答案
                                 content = message.get('content', '') or ''
-                                if not content.strip():
-                                    thinking = message.get('thinking', '') or message.get('reasoning', '')
-                                    if thinking and len(thinking.strip()) > 5:
-                                        content = thinking
-                                
                                 if content and content.strip():
                                     full_content += content
                                     pbar.set_generating(len(full_content))
@@ -398,12 +398,11 @@ class VisionService(OpenAICompatibleService):
                 )
                 
                 if result["success"]:
-                    # 注：卸载已在 _call_ollama_native_vision 的 finally 块中处理
-                    
-                    # 应用思维链输出过滤
                     content = result["content"]
                     if filter_thinking_output:
-                        content = filter_thinking_content(content)
+                        filtered = filter_thinking_content(content)
+                        # 过滤后若为空（如模型输出仅含 <think> 块），则保留原始内容避免误报空结果
+                        content = filtered if filtered.strip() else content
                     
                     return {
                         "success": True,
@@ -600,12 +599,11 @@ class VisionService(OpenAICompatibleService):
                 )
                 
                 if result["success"]:
-                    # 注：卸载已在 _call_ollama_native_vision 的 finally 块中处理
-                    
-                    # 应用思维链输出过滤
                     content = result["content"]
                     if filter_thinking_output:
-                        content = filter_thinking_content(content)
+                        filtered = filter_thinking_content(content)
+                        # 过滤后若为空（如模型输出仅含 <think> 块），则保留原始内容避免误报空结果
+                        content = filtered if filtered.strip() else content
                     
                     return {
                         "success": True,
