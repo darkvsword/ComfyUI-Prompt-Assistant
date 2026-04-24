@@ -9,51 +9,13 @@ import asyncio
 import httpx
 from typing import Optional, Dict, Any, List, Callable
 from .core import BaseAPIService, HTTPClientPool
+from .ollama_utils import wait_before_ollama_unload
 from ..utils.common import (
     format_api_error, ProgressBar, log_complete, log_error,
     PREFIX, PROCESS_PREFIX, WARN_PREFIX, ERROR_PREFIX, format_elapsed_time,
     TASK_IMAGE_CAPTION, TASK_VIDEO_CAPTION
 )
 from .thinking_control import build_thinking_suppression
-import re
-
-
-# ==================== 思维链输出过滤 ====================
-
-def filter_thinking_content(text: str) -> str:
-    """
-    过滤模型输出中的思维链内容
-    支持多种标签格式：<think>, <reasoning>, <thoughts>
-    
-    处理三种情况：
-    1. 成对标签：<think>...</think> → 移除整个块
-    2. 只有结束标签：...content</think> → 移除到结束标签为止的内容
-    3. 只有开始标签（无结束标签）：<think>...EOF → 移除整个思考块（截断到结尾）
-    
-    参数:
-        text: 原始模型输出文本
-    
-    返回:
-        str: 过滤后的文本
-    """
-    if not text:
-        return text
-    
-    # 1. 优先匹配成对的思维链标签（最常见情况）
-    pattern_pair = r'<(think|thinking|reasoning|thoughts?)>[\s\S]*?</\1>'
-    text = re.sub(pattern_pair, '', text, flags=re.IGNORECASE)
-    
-    # 2. 兜底处理：如果还有残留的结束标签，则移除该标签及之前的所有内容
-    pattern_orphan_end = r'^[\s\S]*?</(think|thinking|reasoning|thoughts?)>'
-    text = re.sub(pattern_orphan_end, '', text, flags=re.IGNORECASE)
-    
-    # 3. 处理只有开始标签、没有结束标签的情况
-    # 场景：模型输出 <think>Thinking Process:...
-    pattern_orphan_start = r'<(think|thinking|reasoning|thoughts?)>[\s\S]*$'
-    text = re.sub(pattern_orphan_start, '', text, flags=re.IGNORECASE)
-    
-    return text.strip()
-
 
 
 class OpenAICompatibleService(BaseAPIService):
@@ -95,6 +57,9 @@ class OpenAICompatibleService(BaseAPIService):
             if endpoint in url:
                 # 已包含完整端点，直接返回（移除末尾斜杠）
                 return url.rstrip('/')
+        
+        if 'api.openai.com' in url and '/v1' not in url:
+            url = url.rstrip('/') + '/v1'
         
         # 规则3：常规模式 - 需要拼接 /chat/completions
         return url.rstrip('/') + '/chat/completions'
@@ -233,10 +198,13 @@ class OpenAICompatibleService(BaseAPIService):
                 headers["Authorization"] = f"Bearer {api_key}"
             
             # 获取HTTP客户端
+            request_timeout = 180.0
+            if task_type in (TASK_IMAGE_CAPTION, TASK_VIDEO_CAPTION):
+                request_timeout = 300.0
             client = HTTPClientPool.get_client(
                 provider=provider_display_name,
                 base_url=base_url,
-                timeout=60.0
+                timeout=request_timeout
             )
 
             # 前置中断检查：如果 ComfyUI 已经中断了，不启动请求
@@ -402,30 +370,7 @@ class OpenAICompatibleService(BaseAPIService):
                                     "should_retry": True
                                 }
                             
-                            # 应用思维链过滤 (如果请求中指定了过滤)
-                            if filter_thinking_output:
-                                filtered = filter_thinking_content(final_content)
-                                # 改进的过滤逻辑：
-                                # 如果过滤后内容变空了，且原始内容包含明显的思维链标签，说明模型只输出了思考过程
-                                # 此时如果不为空且匹配了标签，我们不回退，直接让它为空（触发后续的空结果错误）
-                                if filtered.strip():
-                                    final_content = filtered
-                                elif final_content.strip() and ("<think" in final_content.lower() or "<reason" in final_content.lower() or "</think" in final_content.lower()):
-                                    # 明确检测到思维链标签且过滤后变空，说明整段都是思维链，返回空
-                                    final_content = ""
-                                else:
-                                    final_content = filtered
-                            
-                            # 过滤后的最终判空
-                            if not final_content.strip():
-                                return {
-                                    "success": False,
-                                    "error": "API returned empty content after filtering",
-                                    "status_code": 200,
-                                    "should_retry": True
-                                }
-                            else:
-                                pbar.done(char_count=len(final_content), elapsed_ms=elapsed_ms)
+                            pbar.done(char_count=len(final_content), elapsed_ms=elapsed_ms)
                             
                             return {"success": True, "content": final_content}
 
@@ -539,6 +484,8 @@ class OpenAICompatibleService(BaseAPIService):
                 from ..utils.common import PROCESS_PREFIX
                 print(f"{PROCESS_PREFIX} Ollama模型已保留 | 模型:{model}")
                 return
+            
+            await wait_before_ollama_unload()
             
             # 获取base_url
             base_url = provider_config.get('base_url', 'http://localhost:11434')

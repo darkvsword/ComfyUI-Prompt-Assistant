@@ -4,18 +4,17 @@ LLM服务 - 重构版本
 继承OpenAICompatibleService以复用通用逻辑
 """
 
-import json
 import time
 import asyncio
 from typing import Optional, Dict, Any, List, Callable
-import httpx
-from .openai_base import OpenAICompatibleService, filter_thinking_content
+from .openai_base import OpenAICompatibleService
+from .thinking_filter import postprocess_model_output
 from ..utils.common import (
     format_api_error, ProgressBar, log_complete, log_error,
     PREFIX, PROCESS_PREFIX, WARN_PREFIX, ERROR_PREFIX, format_elapsed_time,
     TASK_EXPAND, TASK_TRANSLATE
 )
-from .thinking_control import build_thinking_suppression
+from .thinking_control import build_thinking_suppression, should_append_no_thinking_instruction
 
 
 class LLMService(OpenAICompatibleService):
@@ -65,6 +64,7 @@ class LLMService(OpenAICompatibleService):
         auto_unload: bool = True,
         enable_advanced_params: bool = False,
         thinking_extra: Optional[Dict[str, Any]] = None,
+        filter_thinking_output: bool = True,
         cancel_event: Optional[Any] = None,
         task_type: str = None,
         source: str = None
@@ -188,127 +188,25 @@ class LLMService(OpenAICompatibleService):
             
             start_time = time.perf_counter()
             
-            async with httpx.AsyncClient(
-                timeout=httpx.Timeout(final_timeout, connect=10.0, read=final_timeout),
-                limits=httpx.Limits(max_keepalive_connections=5, max_connections=10),
-                # 关键修复：禁用系统环境变量代理配置
-                # 避免 HTTP_PROXY/HTTPS_PROXY 导致 localhost 请求被代理拦截返回 502
-                trust_env=False
-            ) as client:
-                full_content = ""
-                
-                # 定义请求核心逻辑
-                async def _request_core(current_payload):
-                    async with client.stream('POST', f"{native_base}/api/chat", json=current_payload, follow_redirects=True) as resp:
-                        if resp.status_code != 200:
-                            error_text = await resp.aread()
-                            try:
-                                error_data = json.loads(error_text)
-                                error_msg = error_data.get('error', f'HTTP {resp.status_code}')
-                            except:
-                                error_msg = f'HTTP {resp.status_code}'
-                            return {"success": False, "error": error_msg, "status_code": resp.status_code}
-                        
-                        nonlocal full_content
-                        async for line in resp.aiter_lines():
-                            if not line: continue
-                            try:
-                                chunk_data = json.loads(line)
-                                
-                                # 关键修复：检测流内错误（Ollama 可能会在 HTTP 200 流中发送 error 对象）
-                                if chunk_data.get('error'):
-                                    error_msg = chunk_data.get('error')
-                                    if isinstance(error_msg, dict):
-                                        error_msg = error_msg.get('message', str(error_msg))
-                                    else:
-                                        error_msg = str(error_msg)
-                                    
-                                    # 如果包含不支持的参数，触发降级重试
-                                    status_code = 400 if "think" in error_msg.lower() or "support" in error_msg.lower() or "invalid" in error_msg.lower() else 200
-                                    return {"success": False, "error": error_msg, "status_code": status_code}
-                                
-                                message = chunk_data.get('message')
-                                if message and isinstance(message, dict):
-                                    content = message.get('content', '')
-                                    if content:
-                                        full_content += content
-                                        pbar.set_generating(len(full_content))
-                                        pbar.update(len(full_content))
-                                        if stream_callback: stream_callback(content)
-                                
-                                if chunk_data.get('done', False):
-                                    # 针对 Ollama 错误地返回空内容的兜底策略
-                                    if not full_content.strip() and "think" in current_payload:
-                                        return {"success": False, "error": "Model does not support thinking or returned empty content", "status_code": 400}
-                                        
-                                    pbar.done(char_count=len(full_content), elapsed_ms=int((time.perf_counter() - start_time) * 1000))
-                                    break
-                            except Exception as e:
-                                continue
-                        return {"success": True, "content": full_content.strip()}
-
-                # 定义监视器逻辑
-                async def _monitor_interrupts(target_task):
-                    while not target_task.done():
-                        is_interrupted = False
-                        if cancel_event is not None and cancel_event.is_set():
-                            is_interrupted = True
-                        else:
-                            try:
-                                from server import PromptServer
-                                if hasattr(PromptServer.instance, 'execution_interrupted') and PromptServer.instance.execution_interrupted:
-                                    is_interrupted = True
-                            except: pass
-                        
-                        if is_interrupted:
-                            target_task.cancel()
-                            return True
-                        await asyncio.sleep(0.1)
-                    return False
-
-                # 并发执行
-                req_task = asyncio.create_task(_request_core(payload))
-                monitor_task = asyncio.create_task(_monitor_interrupts(req_task))
-                
-                try:
-                    result = await req_task
-
-                    # ==== 新增自动降级重试：如果模型不支持 thinking 参数，则移除后重试 ====
-                    is_think_error = False
-                    if not result.get("success") and result.get("error"):
-                        err_str = str(result.get("error")).lower()
-                        # 广谱匹配不支持参数的错误
-                        if result.get("status_code") == 400 or "think" in err_str or "support" in err_str or "invalid" in err_str or "empty" in err_str:
-                            is_think_error = True
-                            
-                    if is_think_error:
-                        if "think" in payload:
-                            # 移除不支持的 think 参数，重新发起请求
-                            del payload["think"]
-                            req_task = asyncio.create_task(_request_core(payload))
-                            monitor_task = asyncio.create_task(_monitor_interrupts(req_task))
-                            result = await req_task
-                    # ====================================================================
-
-                    # 兜底处理：确保失败结果时进度条已停止
-                    if not result.get("success") and not getattr(pbar, '_closed', False):
-                        pbar.error(result.get("error", "未知错误"))
-                    return result
-                except Exception as req_err:
-                    if 'pbar' in locals() and pbar:
-                        pbar.error(f"Ollama 请求异常: {req_err}")
-                    return {"success": False, "error": f"Ollama 请求异常: {req_err}"}
-                except asyncio.CancelledError:
-
-                    pbar.cancel(f"{WARN_PREFIX} 任务被中断 | 服务:Ollama")
-                    return {"success": False, "error": "任务被中断", "interrupted": True}
-                finally:
-                    if not monitor_task.done(): monitor_task.cancel()
-                    # 强力显存释放保证：不仅是成功，中断也要释放
-                    if auto_unload:
-                        try:
-                            await cls._unload_ollama_model(model, {"base_url": native_base, "auto_unload": True})
-                        except: pass
+            try:
+                from .ollama_native import OllamaNativeAdapter
+                return await OllamaNativeAdapter.stream_chat(
+                    model=model,
+                    native_base=native_base,
+                    payload=payload,
+                    timeout=final_timeout,
+                    pbar=pbar,
+                    stream_callback=stream_callback,
+                    cancel_event=cancel_event,
+                    provider_label="Ollama",
+                    include_reasoning=not filter_thinking_output,
+                )
+            finally:
+                if auto_unload:
+                    try:
+                        await cls._unload_ollama_model(model, {"base_url": native_base, "auto_unload": True})
+                    except:
+                        pass
         
         # 关键修复：单独捕获外层 CancelledError，确保 pbar 被正确停止
         except asyncio.CancelledError:
@@ -411,7 +309,8 @@ class LLMService(OpenAICompatibleService):
 
             # 构建消息
             lang_content = "请用中文回答" if LLMService._is_chinese(prompt) else "Please answer in English."
-            if disable_thinking_enabled:
+            provider_type = service.get('type', provider) if service else provider
+            if should_append_no_thinking_instruction(provider_type, model, disable_thinking_enabled):
                 lang_content += " 请直接输出结果，不要包含任何思考过程、推理过程或 <think> 标签。"
             
             lang_message = {
@@ -433,6 +332,7 @@ class LLMService(OpenAICompatibleService):
                 # 读取 Ollama 服务的配置
                 enable_advanced_params = service.get('enable_advanced_params', False)
                 filter_thinking_output = service.get('filter_thinking_output', True)
+                effective_filter_thinking_output = filter_thinking_output or disable_thinking_enabled
                 
                 # 统一计算 native_base (确保移除 /v1 和末尾斜杠)
                 native_base = base_url.rstrip('/')
@@ -463,32 +363,20 @@ class LLMService(OpenAICompatibleService):
                     auto_unload=auto_unload,
                     enable_advanced_params=enable_advanced_params,
                     thinking_extra=_thinking_extra,
+                    filter_thinking_output=effective_filter_thinking_output,
                     cancel_event=cancel_event,
                     task_type=task_type or TASK_EXPAND,
                     source=source
                 )
                 
                 if result["success"]:
-                    # 自动卸载 (原生调用路径需要手动触发，但使用补全后的基类逻辑)
-                    await LLMService._unload_ollama_model(model, _cfg)
-                    
-                    # 应用思维链输出过滤
-                    content = result["content"]
-                    if filter_thinking_output:
-                        filtered = filter_thinking_content(content)
-                        # 改进的过滤逻辑：
-                        # 如果过滤后内容变空了，且原始内容包含明显的思维链标签，说明模型只输出了思考过程
-                        # 此时如果不为空且匹配了标签，我们不回退，直接让它为空（触发后续的空结果错误，或者让用户知道确实没结果）
-                        if filtered.strip():
-                            content = filtered
-                        elif content.strip() and ("<think" in content.lower() or "<reason" in content.lower() or "</think" in content.lower()):
-                            # 明确检测到思维链标签且过滤后变空，说明整段都是思维链，返回空以触发错误处理
-                            content = ""
-                        else:
-                            content = filtered
+                    success, content = postprocess_model_output(
+                        result["content"],
+                        filter_thinking_output=effective_filter_thinking_output,
+                    )
                     
                     # 最终检查内容是否为空
-                    if not content.strip():
+                    if not success:
                         return {"success": False, "error": "API returned empty result after filtering reasoning content (Ollama native)"}
                     
                     return {
@@ -508,6 +396,7 @@ class LLMService(OpenAICompatibleService):
             disable_thinking_enabled = service.get('disable_thinking', True) if service else True
             enable_advanced_params = service.get('enable_advanced_params', False) if service else False
             filter_thinking_output = service.get('filter_thinking_output', True) if service else True
+            effective_filter_thinking_output = filter_thinking_output or disable_thinking_enabled
             thinking_extra = build_thinking_suppression(provider, model) if disable_thinking_enabled else None
             
             result = await LLMService._http_request_chat_completions(
@@ -526,26 +415,17 @@ class LLMService(OpenAICompatibleService):
                 cancel_event=cancel_event,
                 task_type=task_type or TASK_EXPAND,
                 source=source,
-                filter_thinking_output=filter_thinking_output
+                filter_thinking_output=effective_filter_thinking_output
             )
 
             if result["success"]:
-                # 根据配置决定是否应用思维链输出过滤
-                content = result["content"]
-                if filter_thinking_output:
-                    filtered = filter_thinking_content(content)
-                    # 改进的过滤逻辑：
-                    # 如果过滤后内容变空了，且原始内容包含明显的思维链标签，说明模型只输出了思考过程
-                    if filtered.strip():
-                        content = filtered
-                    elif content.strip() and ("<think" in content.lower() or "<reason" in content.lower() or "</think" in content.lower()):
-                        # 明确检测到思维链标签且过滤后变空，说明整段都是思维链，返回空以触发错误处理
-                        content = ""
-                    else:
-                        content = filtered
+                success, content = postprocess_model_output(
+                    result["content"],
+                    filter_thinking_output=effective_filter_thinking_output,
+                )
                 
                 # 最终检查内容是否为空
-                if not content.strip():
+                if not success:
                     return {"success": False, "error": "API returned empty result after filtering reasoning content (Model only output thinking process)"}
                 return {
                     "success": True,
@@ -696,6 +576,7 @@ class LLMService(OpenAICompatibleService):
                 disable_thinking_enabled = service.get('disable_thinking', True)
                 enable_advanced_params = service.get('enable_advanced_params', False)
                 filter_thinking_output = service.get('filter_thinking_output', True)
+                effective_filter_thinking_output = filter_thinking_output or disable_thinking_enabled
                 _ollama_thinking_extra = build_thinking_suppression(service.get('type', provider) if service else provider, model) if disable_thinking_enabled else None
                 
                 # 统一计算 native_base (确保移除 /v1 和末尾斜杠)
@@ -726,29 +607,20 @@ class LLMService(OpenAICompatibleService):
                     auto_unload=auto_unload,
                     enable_advanced_params=enable_advanced_params,
                     thinking_extra=_ollama_thinking_extra,
+                    filter_thinking_output=effective_filter_thinking_output,
                     cancel_event=cancel_event,
                     task_type=task_type or TASK_TRANSLATE,
                     source=source
                 )
                 
                 if result["success"]:
-                    await LLMService._unload_ollama_model(model, _cfg)
-                    
-                    # 应用思维链输出过滤
-                    content = result["content"]
-                    if filter_thinking_output:
-                        filtered = filter_thinking_content(content)
-                        # 改进的过滤逻辑
-                        if filtered.strip():
-                            content = filtered
-                        elif content.strip() and ("<think" in content.lower() or "<reason" in content.lower() or "</think" in content.lower()):
-                            # 明确检测到思维链标签且过滤后变空，说明整段都是思维链，返回空以触发错误处理
-                            content = ""
-                        else:
-                            content = filtered
+                    success, content = postprocess_model_output(
+                        result["content"],
+                        filter_thinking_output=effective_filter_thinking_output,
+                    )
                     
                     # 最终检查
-                    if not content.strip():
+                    if not success:
                         return {"success": False, "error": "API returned empty result after filtering reasoning content (Ollama native)"}
                     
                     return {
@@ -765,6 +637,7 @@ class LLMService(OpenAICompatibleService):
             # 检查enable_advanced_params和filter_thinking_output配置
             enable_advanced_params = service.get('enable_advanced_params', False) if service else False
             filter_thinking_output = service.get('filter_thinking_output', True) if service else True
+            effective_filter_thinking_output = filter_thinking_output or disable_thinking_enabled
             thinking_extra = _thinking_extra # 复用前面计算好的 suppression
             
             result = await LLMService._http_request_chat_completions(
@@ -782,25 +655,18 @@ class LLMService(OpenAICompatibleService):
                 provider_display_name=provider_display_name,
                 cancel_event=cancel_event,
                 task_type=task_type or TASK_TRANSLATE,
-                source=source
+                source=source,
+                filter_thinking_output=effective_filter_thinking_output
             )
 
             if result["success"]:
-                # 根据配置决定是否应用思维链输出过滤
-                content = result["content"]
-                if filter_thinking_output:
-                    filtered = filter_thinking_content(content)
-                    # 改进的过滤逻辑
-                    if filtered.strip():
-                        content = filtered
-                    elif content.strip() and ("<think" in content.lower() or "<reason" in content.lower() or "</think" in content.lower()):
-                        # 明确检测到思维链标签且过滤后变空，说明整段都是思维链，返回空以触发错误处理
-                        content = ""
-                    else:
-                        content = filtered
+                success, content = postprocess_model_output(
+                    result["content"],
+                    filter_thinking_output=effective_filter_thinking_output,
+                )
                 
                 # 最终检查
-                if not content.strip():
+                if not success:
                     return {"success": False, "error": "API returned empty result after filtering reasoning content"}
                 return {
                     "success": True,
