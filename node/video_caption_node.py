@@ -406,13 +406,37 @@ class VideoCaptionNode(VLMNodeBase, io.ComfyNode):
         # 提取选中帧张量 [K, H, W, C]
         preview_tensor = tensor[selected]
 
+        request_frame_count = preview_tensor.shape[0]
+        if request_frame_count <= 4:
+            max_edge = 1024
+            jpeg_quality = 85
+        elif request_frame_count <= 8:
+            max_edge = 896
+            jpeg_quality = 80
+        else:
+            max_edge = 768
+            jpeg_quality = 75
+
         # 转换为 base64 列表
         base64_list = []
+        resample_filter = getattr(
+            getattr(PILImage, "Resampling", PILImage),
+            "LANCZOS",
+            PILImage.BICUBIC,
+        )
         for i in range(preview_tensor.shape[0]):
             frame_np = (preview_tensor[i].cpu().numpy() * 255).clip(0, 255).astype(np.uint8)
             img = PILImage.fromarray(frame_np)
+            longest_edge = max(img.size)
+            if longest_edge > max_edge:
+                scale = max_edge / longest_edge
+                new_size = (
+                    max(1, int(img.size[0] * scale)),
+                    max(1, int(img.size[1] * scale)),
+                )
+                img = img.resize(new_size, resample_filter)
             buf = BytesIO()
-            img.save(buf, format="JPEG", quality=85)
+            img.save(buf, format="JPEG", quality=jpeg_quality, optimize=True)
             encoded = base64.b64encode(buf.getvalue()).decode('utf-8')
             base64_list.append(f"data:image/jpeg;base64,{encoded}")
 
@@ -485,20 +509,6 @@ class VideoCaptionNode(VLMNodeBase, io.ComfyNode):
                     system_message = {"role": "system", "content": "请详细描述这段视频的内容"}
                     rule_name = "Default Rule"
 
-            # 注入帧数元信息，帮助模型逐帧分析
-            actual_frame_count = len(frames_data)
-            system_text = (
-                system_message.get('content', '')
-                if isinstance(system_message, dict)
-                else str(system_message)
-            )
-            frame_info_prefix = (
-                f"[重要提示：本次共提供了 {actual_frame_count} 帧图像，"
-                f"请务必逐帧分析，确保输出的描述数量与帧数一致。]\n\n"
-            )
-            system_text = frame_info_prefix + system_text
-            prompt_to_send = f"{system_text}\n\n{user_prompt}".strip() if user_prompt else system_text
-
             # ------------------------------------------------------------------
             # 4. 解析服务与模型
             # ------------------------------------------------------------------
@@ -554,6 +564,20 @@ class VideoCaptionNode(VLMNodeBase, io.ComfyNode):
                     f"已忽略:{truncated_count}帧 | 模型:{model_full_name}"
                 )
 
+            # 注入帧数元信息，帮助模型逐帧分析
+            actual_frame_count = len(frames_data)
+            system_text = (
+                system_message.get('content', '')
+                if isinstance(system_message, dict)
+                else str(system_message)
+            )
+            frame_info_prefix = (
+                f"[重要提示：本次共提供了 {actual_frame_count} 帧图像，"
+                f"请务必逐帧分析，确保输出的描述数量与帧数一致。]\n\n"
+            )
+            system_text = frame_info_prefix + system_text
+            prompt_to_send = f"{system_text}\n\n{user_prompt}".strip() if user_prompt else system_text
+
             # ------------------------------------------------------------------
             # 6. 准备日志与 API 调用
             # ------------------------------------------------------------------
@@ -573,7 +597,9 @@ class VideoCaptionNode(VLMNodeBase, io.ComfyNode):
                 {"抽帧模式": sampling_mode, "帧数": len(frames_data)}
             )
 
-            if not provider_config.get('api_key', '') or not provider_config.get('model', ''):
+            if not provider_config.get('model', ''):
+                raise ValueError(f"Please configure model for {vlm_service}")
+            if cls._service_requires_api_key(service) and not provider_config.get('api_key', ''):
                 raise ValueError(f"Please configure API key and model for {vlm_service}")
 
             result = cls._run_vision_task(

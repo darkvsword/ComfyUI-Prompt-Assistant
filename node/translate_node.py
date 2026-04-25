@@ -210,7 +210,9 @@ class PromptTranslate(LLMNodeBase, io.ComfyNode):
         api_key = provider_config.get('api_key', '')
         model = provider_config.get('model', '')
 
-        if not api_key or not model:
+        if not model:
+            return request_id, {"success": False, "error": f"Please configure model for {service_display_name}"}
+        if cls._service_requires_api_key(service) and not api_key:
             return request_id, {"success": False, "error": f"Please configure API key and model for {service_display_name}"}
 
         # 执行翻译（异步线程 + 可中断）

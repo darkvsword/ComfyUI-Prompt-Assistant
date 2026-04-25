@@ -197,6 +197,30 @@ class BaseNode:
         return config_copy
 
     @classmethod
+    def _service_requires_api_key(cls, service: Optional[Dict[str, Any]]) -> bool:
+        """
+        Decide whether a node should block execution before calling the service
+        because the API key is missing.
+        """
+        if not service:
+            return True
+
+        service_type = str(service.get('type', '') or '').strip().lower()
+        if service_type == 'ollama':
+            return False
+
+        for key in ('requires_api_key', 'api_key_required', 'auth_required'):
+            if service.get(key) is False:
+                return False
+
+        base_url = str(service.get('base_url', '') or '').strip().lower()
+        local_hosts = ('localhost', '127.0.0.1', '0.0.0.0', '[::1]', '::1')
+        if any(host in base_url for host in local_hosts):
+            return False
+
+        return True
+
+    @classmethod
     def _get_prompt_template(
         cls,
         template_name: str,

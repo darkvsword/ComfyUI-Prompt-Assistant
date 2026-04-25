@@ -294,7 +294,9 @@ class PromptExpand(LLMNodeBase, io.ComfyNode):
             log_prepare(TASK_EXPAND, request_id, SOURCE_NODE, service_display_name, model_display, rule_name, {"长度": len(combined_text)})
 
             # 检查 API 密钥和模型
-            if not provider_config.get('api_key', '') or not provider_config.get('model', ''):
+            if not provider_config.get('model', ''):
+                raise ValueError(f"Please configure model for {llm_service}")
+            if cls._service_requires_api_key(service) and not provider_config.get('api_key', ''):
                 raise ValueError(f"Please configure API key and model for {llm_service}")
 
             # 执行扩写（异步线程 + 可中断）

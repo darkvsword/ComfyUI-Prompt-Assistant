@@ -316,12 +316,17 @@ class OpenAICompatibleService(BaseAPIService):
                                             delta.get('thinking_process', '') or  # 备选
                                             ''
                                         )
-                                        if reasoning: reasoning_content += reasoning
+                                        if reasoning:
+                                            reasoning_content += reasoning
+                                            progress_count = len(full_content) + len(reasoning_content)
+                                            pbar.set_generating(progress_count)
+                                            pbar.update(progress_count)
                                         if content:
                                             full_content += content
                                             if stream_callback: stream_callback(content)
-                                            pbar.set_generating(len(full_content))
-                                            pbar.update(len(full_content))
+                                            progress_count = len(full_content) + len(reasoning_content)
+                                            pbar.set_generating(progress_count)
+                                            pbar.update(progress_count)
                                 except json.JSONDecodeError:
                                     continue  # 非 JSON 行（如注释、空行），正常跳过
                                 except asyncio.CancelledError:

@@ -5,6 +5,7 @@ from typing import Any, Callable, Dict, Optional
 
 import httpx
 
+from .core import HTTPClientPool
 from .ollama_utils import (
     build_ollama_final_answer_retry_payload,
     collect_ollama_message_parts,
@@ -31,11 +32,15 @@ class OllamaNativeAdapter:
     ) -> Dict[str, Any]:
         start_time = time.perf_counter()
 
-        async with httpx.AsyncClient(
-            timeout=httpx.Timeout(timeout, connect=10.0, read=timeout),
+        client = HTTPClientPool.get_client(
+            provider="ollama_native",
+            base_url=native_base,
+            timeout=timeout,
+            verify_ssl=True,
             limits=httpx.Limits(max_keepalive_connections=5, max_connections=10),
-            trust_env=False,
-        ) as client:
+        )
+
+        try:
             async def request_once(current_payload: Dict[str, Any]) -> Dict[str, Any]:
                 full_content = ""
                 reasoning_content = ""
@@ -88,10 +93,14 @@ class OllamaNativeAdapter:
                                 content, reasoning = collect_ollama_message_parts(message)
                                 if reasoning:
                                     reasoning_content += reasoning
+                                    progress_count = len(full_content) + len(reasoning_content)
+                                    pbar.set_generating(progress_count)
+                                    pbar.update(progress_count)
                                 if content:
                                     full_content += content
-                                    pbar.set_generating(len(full_content))
-                                    pbar.update(len(full_content))
+                                    progress_count = len(full_content) + len(reasoning_content)
+                                    pbar.set_generating(progress_count)
+                                    pbar.update(progress_count)
                                     if stream_callback:
                                         stream_callback(content)
 
@@ -165,12 +174,16 @@ class OllamaNativeAdapter:
                 if should_retry_without_ollama_think(request_payload, result):
                     request_payload = request_payload.copy()
                     request_payload.pop("think", None)
+                    if not monitor_task.done():
+                        monitor_task.cancel()
                     req_task = asyncio.create_task(request_once(request_payload))
                     monitor_task = asyncio.create_task(monitor_interrupts(req_task))
                     result = await req_task
 
                 if is_ollama_reasoning_only_response(result):
                     retry_payload = build_ollama_final_answer_retry_payload(payload)
+                    if not monitor_task.done():
+                        monitor_task.cancel()
                     req_task = asyncio.create_task(request_once(retry_payload))
                     monitor_task = asyncio.create_task(monitor_interrupts(req_task))
                     result = await req_task
@@ -188,3 +201,5 @@ class OllamaNativeAdapter:
             finally:
                 if not monitor_task.done():
                     monitor_task.cancel()
+        finally:
+            pass

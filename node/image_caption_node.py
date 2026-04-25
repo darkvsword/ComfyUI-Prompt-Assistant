@@ -325,7 +325,9 @@ class ImageCaptionNode(VLMNodeBase, io.ComfyNode):
             if service.get('type') == 'ollama':
                 provider_config['auto_unload'] = ollama_auto_unload
 
-            if not provider_config.get('api_key', '') or not provider_config.get('model', ''):
+            if not provider_config.get('model', ''):
+                raise ValueError(f"Please configure model for {vlm_service}")
+            if cls._service_requires_api_key(service) and not provider_config.get('api_key', ''):
                 raise ValueError(f"Please configure API key and model for {vlm_service}")
 
             # ------------------------------------------------------------------
@@ -342,6 +344,10 @@ class ImageCaptionNode(VLMNodeBase, io.ComfyNode):
                 for i in range(batch_size):
                     single_frame = image[i:i + 1]  # 保持 4D 形状 [1, H, W, C]
                     image_data = cls._image_to_base64(single_frame)
+                    frame_provider_config = provider_config
+                    if service.get('type') == 'ollama':
+                        frame_provider_config = provider_config.copy()
+                        frame_provider_config['auto_unload'] = bool(ollama_auto_unload) and i == batch_size - 1
                     # 为每帧生成独立的 request_id，便于日志追踪
                     frame_request_id = generate_request_id("vlm", None, f"{unique_id}_f{i}")
                     description = cls._analyze_single_image(
@@ -350,7 +356,7 @@ class ImageCaptionNode(VLMNodeBase, io.ComfyNode):
                         rule_name=rule_name,
                         service_id=service_id,
                         service=service,
-                        provider_config=provider_config,
+                        provider_config=frame_provider_config,
                         request_id=frame_request_id,
                         frame_index=i
                     )
