@@ -175,13 +175,13 @@
                 "name": "動画",
                 "tooltip": "入力動画"
             },
-            "image_sequence": {
-                "name": "画像",
-                "tooltip": "入力画像シーケンス"
-            },
             "seed": {
                 "name": "シード",
                 "tooltip": "生成のランダム性を制御します。固定以外のモードを選択すると、再実行が強制されます"
+            },
+            "video_frames": {
+                "name": "画像",
+                "tooltip": "画像シーケンス (IMAGE batch)"
             }
         },
         "outputs": {

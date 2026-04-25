@@ -835,43 +835,51 @@ def preprocess_image(
         return image_data
 
 
-def check_multi_image_support(provider: str, model: str) -> tuple:
+def get_model_max_images(model: str) -> int:
     """
-    检查服务商是否支持多图像分析
+    根据模型名称推断最大支持图像数
     
-    参数:
-        provider: 服务商标识
-        model: 模型名称
-        
-    返回:
-        tuple: (支持多图像: bool, 最大图像数: int)
+    策略：乐观默认，已知模型给精确上限，未知模型给安全默认值(10)
     """
     model_lower = (model or "").lower()
     
-    # Gemini系列：支持多图像
+    # Gemini系列：超大上下文支持大量图像
     if "gemini" in model_lower or "google" in model_lower:
-        return (True, 3000)
+        return 3000
     
-    # 智谱GLM系列视觉模型
-    # GLM-4.6V系列：128K上下文，支持大量多图（无官方硬限制）
-    if "glm" in model_lower and "4.6v" in model_lower:
-        return (True, 100)
-    
-    # GLM-4V系列（4V-Plus等）：16K上下文，最多5张
-    if "glm" in model_lower and ("4v" in model_lower or "vision" in model_lower):
-        return (True, 5)
-    
-    # Qwen系列：支持多图像
-    if "qwen" in model_lower and ("vl" in model_lower or "vision" in model_lower):
-        return (True, 100)
-    
-    # OpenAI GPT-4V及兼容模型：支持多图像
-    if "gpt-4" in model_lower and ("vision" in model_lower or "v" in model_lower or "turbo" in model_lower):
-        return (True, 100)
-    
-    # 其他OpenAI兼容的视觉模型
+    # Qwen系列：直接给予 100 张上限
+    if "qwen" in model_lower:
+        return 100
+        
+    # 智谱GLM系列
+    if "glm" in model_lower:
+        if "4.6v" in model_lower:
+            return 100
+        return 5
+        
+    # GPT-4 / GPT-5 系列
+    if "gpt-4" in model_lower or "gpt-5" in model_lower:
+        return 100
+        
+    # Claude 系列
+    if "claude" in model_lower:
+        return 20
+        
+    # Grok 系列
+    if "grok" in model_lower:
+        return 20
+        
+    # 含视觉关键词的模型（兜底）
     if any(keyword in model_lower for keyword in ["vision", "visual", "vl", "multimodal"]):
-        return (True, 10)
-    
-    # 默认：不支持多图像
-    return (False, 0)
+        return 100
+        
+    # 默认：乐观允许，给安全上限 10
+    return 10
+
+
+def check_multi_image_support(provider: str, model: str) -> tuple:
+    """
+    兼容保留的旧 API，内部路由到 get_model_max_images。
+    """
+    limit = get_model_max_images(model)
+    return (True, limit)

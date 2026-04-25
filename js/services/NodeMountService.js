@@ -382,15 +382,40 @@ class NodeMountService {
                 let currentIndex = 0;
 
                 for (const w of node.widgets) {
+                    // Skip hidden widgets because they are not rendered in the DOM
+                    if (w.hidden || w.type === 'hidden') {
+                        continue;
+                    }
                     if (this._isTextareaWidget(w)) {
-                        if (w === widget) {
+                        // 尝试解包动态代理 (如 Subgraph 的 PromotedWidgetView) 以比对底层真实引用
+                        let wInternal = w;
+                        if (typeof w.resolveDeepest === 'function') {
+                            try {
+                                const deepest = w.resolveDeepest();
+                                if (deepest && deepest.widget) wInternal = deepest.widget;
+                            } catch (e) {}
+                        }
+
+                        if (w === widget || wInternal === targetWidget) {
                             targetIndex = currentIndex;
                             break;
                         }
-                        // 如果传入的是只包含 name 的桩对象 (旧逻辑遗留保障)，则按名字匹配，但需注意可能匹配到同名第一个
-                        else if (!targetWidget.node && w.name && w.name === widget.name) {
+                        // 支持 SubgraphNode 代理控件（利用核心来源标识严格比对，可彻底解决重名文本框冲突问题）
+                        else if (
+                            w.sourceNodeId && widget.sourceNodeId &&
+                            w.sourceWidgetName && widget.sourceWidgetName &&
+                            w.sourceNodeId === widget.sourceNodeId &&
+                            w.sourceWidgetName === widget.sourceWidgetName
+                        ) {
                             targetIndex = currentIndex;
                             break;
+                        }
+                        // 支持其他动态代理控件
+                        // 且无法通过解析到底层引用的情况
+                        // 通过名称精确匹配。如果名字存在重复，且无法解析到底层组件，这里会记录第一个匹配到的。
+                        else if (targetIndex === -1 && w.name && widget.name && w.name === widget.name) {
+                            // 暂存匹配到的索引，但不要 break，以防后面出现严格引用比对成功的对象
+                            targetIndex = currentIndex;
                         }
                         currentIndex++;
                     }
@@ -398,6 +423,9 @@ class NodeMountService {
 
                 if (targetIndex !== -1) {
                     // 2. 获取 DOM 中所有的 PrimeVue textarea（优先）或普通 textarea
+                    // 【修正】必须保证查找到的是真正与 widget 对应的 textarea
+                    // 有可能子图中有些 widget 被隐藏并未渲染，会导致 DOM 中的 textarea 数量
+                    // 少于 node.widgets 里收集到的数量。
                     const primeTextareas = Array.from(nodeContainer.querySelectorAll('textarea.p-textarea'));
                     const textareas = primeTextareas.length > 0
                         ? primeTextareas
@@ -407,8 +435,6 @@ class NodeMountService {
                     if (targetIndex < textareas.length) {
                         textarea = textareas[targetIndex];
                         logger.debugSample(() => `[NodeMountService] Vue模式: 索引匹配成功 [${targetIndex}] | Widget: ${widgetName} | 子图: ${isSubgraph}`);
-                    } else {
-
                     }
                 }
             }

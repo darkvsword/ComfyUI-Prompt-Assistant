@@ -15,6 +15,7 @@ import { HistoryCacheService, TagCacheService } from './services/cache.js';
 import { imageCaption, ImageCaption } from './modules/imageCaption.js';
 import { nodeHelpTranslator } from './modules/nodeHelpTranslator.js';
 import { nodeMountService, RENDER_MODE } from './services/NodeMountService.js';
+import { tUI } from "./utils/uiI18n.js";
 import './node/captionFrame.js'; // 导入视频手动抽帧功能
 
 
@@ -159,6 +160,23 @@ app.registerExtension({
 
         // 暴露 _injectUniversalHooks 供外部使用
         app.registerExtension._injectUniversalHooks = this._injectUniversalHooks.bind(this);
+
+        // --- 监听后端警告事件 (如帧数截断) ---
+        app.api.addEventListener("prompt_assistant.warning", ({ detail }) => {
+            if (detail?.type === "frame_truncated") {
+                const summary = tUI("帧数已截断", "⚠️ Frames Truncated");
+                const detailMsg = tUI("帧数截断详情", "Model supports max {max} frames, {truncated} frame(s) ignored")
+                    .replace("{max}", detail.max_images)
+                    .replace("{truncated}", detail.truncated);
+                
+                app.extensionManager?.toast?.add({
+                    severity: "warn",
+                    summary: summary,
+                    detail: detailMsg,
+                    life: 8000,
+                });
+            }
+        });
     },
 
     /**

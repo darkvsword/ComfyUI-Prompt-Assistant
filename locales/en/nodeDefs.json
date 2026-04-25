@@ -175,9 +175,9 @@
                 "name": "Video",
                 "tooltip": "Input Video"
             },
-            "image_sequence": {
+            "video_frames": {
                 "name": "Images",
-                "tooltip": "Input Image Sequence"
+                "tooltip": "Input image sequence (IMAGE batch)"
             },
             "seed": {
                 "name": "Seed",

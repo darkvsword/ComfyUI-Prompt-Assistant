@@ -987,12 +987,35 @@ class APIConfigManager {
             titleSection.appendChild(titleElement);
         }
 
+        // 如果是 Ollama 服务，在标题后方添加提示 tooltip
+        if (service.type === 'ollama') {
+            const titleElement = titleSection.querySelector('.settings-form-section-title');
+            if (titleElement) {
+                // 确保 h3 可以包含其他元素，设置为 flex 以对齐图标
+                titleElement.style.display = 'inline-flex';
+                titleElement.style.alignItems = 'center';
+
+                const icon = document.createElement('i');
+                icon.className = 'pi pi-info-circle service-setting-info-icon';
+                icon.style.marginLeft = '8px';
+                icon.style.fontSize = '14px';
+                icon.style.color = 'var(--p-text-muted-color)';
+                icon.style.cursor = 'help';
+                titleElement.appendChild(icon);
+                
+                createTooltip({
+                    target: icon,
+                    content: '建议不要在地址后方添加 /v1。不加 /v1 会走原生 Ollama API，加了 /v1 则会走 OpenAI 兼容请求格式。',
+                    position: 'top'
+                });
+            }
+        }
+
         card.appendChild(titleSection);
 
         // 基本信息
         const baseUrlInput = createInputGroup('Base URL', 'https://api.example.com/v1');
         baseUrlInput.input.value = service.base_url || '';
-        
         // 智谱和 xflow 服务的 Base URL 禁用修改
         if (service.id === 'zhipu' || service.id === 'xFlow') {
             baseUrlInput.input.disabled = true;
@@ -1032,7 +1055,7 @@ class APIConfigManager {
 
         const thinkingLabel = document.createElement('span');
         thinkingLabel.className = 'service-setting-label';
-        thinkingLabel.textContent = '关闭思维链';
+        thinkingLabel.textContent = tUI('关闭思维链');
 
         const thinkingIcon = document.createElement('i');
         thinkingIcon.className = 'pi pi-info-circle service-setting-info-icon';
@@ -1090,7 +1113,7 @@ class APIConfigManager {
 
         const advancedParamsLabel = document.createElement('span');
         advancedParamsLabel.className = 'service-setting-label';
-        advancedParamsLabel.textContent = '启用高级参数';
+        advancedParamsLabel.textContent = tUI('启用高级参数');
 
         const advancedParamsIcon = document.createElement('i');
         advancedParamsIcon.className = 'pi pi-info-circle service-setting-info-icon';
@@ -1148,7 +1171,7 @@ class APIConfigManager {
 
         const filterThinkingLabel = document.createElement('span');
         filterThinkingLabel.className = 'service-setting-label';
-        filterThinkingLabel.textContent = '过滤思维链输出';
+        filterThinkingLabel.textContent = tUI('过滤思维链输出');
 
         const filterThinkingIcon = document.createElement('i');
         filterThinkingIcon.className = 'pi pi-info-circle service-setting-info-icon';
@@ -1207,7 +1230,7 @@ class APIConfigManager {
 
             const autoUnloadLabel = document.createElement('span');
             autoUnloadLabel.className = 'service-setting-label';
-            autoUnloadLabel.textContent = '自动释放模型';
+            autoUnloadLabel.textContent = tUI('自动释放模型');
 
             const autoUnloadIcon = document.createElement('i');
             autoUnloadIcon.className = 'pi pi-info-circle service-setting-info-icon';
@@ -1297,6 +1320,22 @@ class APIConfigManager {
             ? tUI('2️⃣ 添加翻译、提示词优化的大语言模型 (LLM)')
             : tUI('3️⃣ 添加图像、视频反推的视觉模型 (VLM)');
         title.style.margin = '0';
+        title.style.display = 'inline-flex';
+        title.style.alignItems = 'center';
+
+        const modelHintIcon = document.createElement('i');
+        modelHintIcon.className = 'pi pi-exclamation-circle service-setting-info-icon';
+        modelHintIcon.style.marginLeft = '8px';
+        modelHintIcon.style.fontSize = '14px';
+        modelHintIcon.style.color = 'var(--p-text-muted-color)';
+        modelHintIcon.style.cursor = 'help';
+        title.appendChild(modelHintIcon);
+
+        createTooltip({
+            target: modelHintIcon,
+            content: '建议优先选择非思考模型或指令型（-instruct）模型，以减少思维链输出、截断和响应不稳定的问题。',
+            position: 'top'
+        });
 
         // 添加模型按钮
         const addButton = document.createElement('button');
@@ -1492,7 +1531,7 @@ class APIConfigManager {
                 maxTokensInput.input.min = '1';
                 maxTokensInput.input.max = '8192';
                 maxTokensInput.input.step = '1';
-                maxTokensInput.input.value = selectedModel.max_tokens ?? 1024;
+                maxTokensInput.input.value = selectedModel.max_tokens ?? 4096;
                 maxTokensInput.input.dataset.fieldName = 'max_tokens';
                 maxTokensInput.group.style.width = '135px';
                 formContainer.appendChild(maxTokensInput.group);
@@ -1697,7 +1736,7 @@ class APIConfigManager {
                     model_name: modelName,
                     temperature: 0.7,
                     top_p: 0.9,
-                    max_tokens: 1024
+                    max_tokens: 4096
                 })
             });
 
@@ -1723,7 +1762,7 @@ class APIConfigManager {
                 is_default: updatedList.length === 0,
                 temperature: 0.7,
                 top_p: 0.9,
-                max_tokens: 1024
+                max_tokens: 4096
             });
 
             // 移除空提示

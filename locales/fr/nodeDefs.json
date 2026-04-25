@@ -175,13 +175,13 @@
                 "name": "Vidéo",
                 "tooltip": "Vidéo d'entrée"
             },
-            "image_sequence": {
-                "name": "Images",
-                "tooltip": "Séquence d'images d'entrée"
-            },
             "seed": {
                 "name": "Graine",
                 "tooltip": "Contrôle le caractère aléatoire de la génération. Sélectionnez un mode non fixe pour forcer la réexécution"
+            },
+            "video_frames": {
+                "name": "Images",
+                "tooltip": "Séquence d'images (IMAGE batch)"
             }
         },
         "outputs": {
